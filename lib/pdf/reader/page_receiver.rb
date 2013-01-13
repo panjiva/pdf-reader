@@ -20,6 +20,8 @@ class PDF::Reader
         :text_knockout  => 0
       }
 
+      SPACE = " "
+
       # starting a new page
       def page=(page)
         @page          = page
@@ -40,9 +42,9 @@ class PDF::Reader
       #####################################################
 
       # This function gets called for each
-      # character on the page. Subclasses should
-      # override this function
-      def show_char_callback(c)
+      # character that gets drawn on the page. There are no
+      #
+      def show_glyph_callback()
       end
 
       #####################################################
@@ -175,21 +177,12 @@ class PDF::Reader
           raise PDF::Reader::MalformedPDFError, "current font is invalid"
         end
         glyphs = current_font.unpack(string)
-        glyphs.each_with_index do |glyph_code, index|
-          # paint the current glyph
-          newx, newy = @state.trm_transform(0,0)
-          utf8_char = @state.current_font.to_utf8(glyph_code)
-
+        glyphs.each_with_index do |glyph_code|
           #glyph width has units of pt after dividing by 1000
-          glyph_width = @state.current_font.glyph_width(glyph_code) / 1000.0
+          glyph_width = current_font.glyph_width(glyph_code) / 1000.0
 
-          scaled_glyph_width = glyph_width * @state.glyph_width_scaling_factor
-
-          unless utf8_char == SPACE
-            @characters << TextRun.new(newx, newy, scaled_glyph_width, @state.font_size, utf8_char)
-          end
-
-          show_char_callback.call(utf8_char)
+          # Subclasses should implement this function
+          show_glyph_callback.call(glyph_code)
 
           # apply to glyph displacment for the current glyph so the next
           # glyph will appear in the correct position
@@ -206,6 +199,8 @@ class PDF::Reader
               @text_matrix.displacement_left_multiply!(-1*e*state[:font_size]*state[:horizontal_scaling],0)
             else
               @text_matrix.displacement_left_multiply(0,-1*e*[:font_size]*state[:vertical_scaling])
+            end
+            invalidate_cached_values
           end
         end
       end
@@ -337,40 +332,32 @@ class PDF::Reader
       #
       # Arguments:
       #
-      # w0 - the glyph width in *text space*. This generally means the width
+      # w  - the glyph width or height in pt. This generally means the width
       #      in glyph space should be divded by 1000 before being passed to
-      #      this function
-      # tj - any kerning that should be applied to the text matrix before the
-      #      following glyph is painted. This is usually the numeric arguments
-      #      in the array passed to a TJ operator
+      #      this function. if text_mode = 1 (vertical writing mode), then
+      #      w represents the character height. Otherwise, it is the character
+      #      width.
       # word_boundary - a boolean indicating if a word boundary was just
       #                 reached. Depending on the current state extra space
       #                 may need to be added
       #
-      def process_glyph_displacement(w0, w1, word_boundary)
+      def process_glyph_displacement(w0, word_boundary)
         fs = state[:font_size] # font size
         tc = state[:char_spacing]
-        if word_boundary
-          tw = state[:word_spacing]
+        tw = word_boundary ? state[:word_spacing] : 0
+        if state[:text_mode] == 0
+          th = state[:h_scaling]
+          tx = (w*fs + tc + tw) * th
+          ty = 0
         else
-          tw = 0
+          tx = 0
+          ty = w*fs + tc + tw
         end
-        th = state[:h_scaling]
-        # optimise the common path to reduce Float allocations
-        if th == 1 && tj == 0 && tc == 0 && tw == 0
-          glyph_width = w0 * fs
-          tx = glyph_width
-        else
-          glyph_width = ((w0 - (tj/1000.0)) * fs) * th
-          tx = glyph_width + ((tc + tw) * th)
-        end
-        ty = 0
-
-        # TODO: support ty > 0
 
         @text_matrix.displacement_left_multiply!(tx,ty)
         invalidate_cached_values
       end
+
 
       private
 

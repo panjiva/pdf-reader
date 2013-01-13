@@ -11,8 +11,6 @@ module PDF
     #
     class PageTextReceiver < PageReceiver
 
-      SPACE = " "
-
       # starting a new page
       def page=(page)
         @state = PageState.new(page)
@@ -41,9 +39,10 @@ module PDF
 
       private
 
-      def internal_show_text(char)
+      def show_glyph_callback()
           unless chars == SPACE
-            @characters << TextRun.new(@state.glyfx, newy, scaled_glyph_width, @state.font_size, chars)
+            scaled_glyph_width = magnitude(text_rendering_matrix.a, text_rendering_matrix.b)
+            @characters << TextRun.new(@current_x, @current_y, scaled_glyph_width, font_size, @current_glyph)
           end
         end
       end

@@ -124,6 +124,10 @@ class PDF::Reader
       @cid_widths         = @ohash.object(obj[:W])  || []
       @cid_default_width  = @ohash.object(obj[:DW]) || 1000
 
+      # Metrics for vertical fonts. I'm not sure about the default DW2
+      @cid_heights = @ohash.object(obj[:W2])  || []
+      @cid_default_height  = @ohash.object(obj[:DW2]) || [880, -1000]
+
       if obj[:ToUnicode]
         # ToUnicode is optional for Type1 and Type3
         stream = @ohash.object(obj[:ToUnicode])
