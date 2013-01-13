@@ -40,6 +40,9 @@ class PDF::Reader
     # NOTE: When multiplying matrices, ordering matters. Double check
     #       the PDF spec to ensure you're multiplying things correctly.
     #
+    # NOTE: This matrix (self) is the matrix on the left side of the
+    #       equation
+    #
     # NOTE: see Section 8.3.3, PDF 32000-1:2008, pp 119
     #
     # NOTE: The if statements in this method are ordered to prefer optimisations
@@ -82,6 +85,8 @@ class PDF::Reader
     # Optimised method for when the second matrix in the calculation is
     # a simple horizontal displacement.
     #
+    # The current matrix (self) is on the left hand side
+    #
     # Like this:
     #
     #   [ 1 2 0 ]   [ 1  0 0 ]
@@ -90,6 +95,23 @@ class PDF::Reader
     #
     def horizontal_displacement_multiply!(e2)
       @e = @e + e2
+    end
+
+    # Optimised method for when the second matrix in the calculation is
+    # a simple displacement.
+    #
+    # The current matrix (self) is on the right hand side
+    #
+    # Like this:
+    #
+    #   [ 1  0  0 ]   [ a b 0 ]
+    #   [ 0  1  0 ] X [ c d 0 ]
+    #   [ e2 f2 1 ]   [ e f 1 ]
+    #
+    def displacement_left_multiply!(e2, f2)
+      newe = (e2 * @a) + (f2 * @c) + @e
+      newf = (e2 * @b) + (f2 * @d) + @f
+      @e, @f = newe, newf
     end
 
     private

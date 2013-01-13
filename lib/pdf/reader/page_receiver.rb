@@ -6,7 +6,7 @@ class PDF::Reader
     # encapsulates logic for tracking graphics state as the instructions for
     # a single page are processed. Most of the public methods correspond
     # directly to PDF operators.
-    class PageState
+    class PageReceiver
 
       DEFAULT_GRAPHICS_STATE = {
         :char_spacing   => 0,
@@ -21,7 +21,7 @@ class PDF::Reader
       }
 
       # starting a new page
-      def initialize(page)
+      def page=(page)
         @page          = page
         @cache         = page.cache
         @objects       = page.objects
@@ -29,7 +29,20 @@ class PDF::Reader
         @xobject_stack = [page.xobjects]
         @cs_stack      = [page.color_spaces]
         @stack         = [DEFAULT_GRAPHICS_STATE.dup]
+        @show_text_callback = lambda{ |string, kerning| }
         state[:ctm]    = identity_matrix
+        invalidate_cached_values
+      end
+
+
+      #####################################################
+      # Callbacks (abstract functions)
+      #####################################################
+
+      # This function gets called for each
+      # character on the page. Subclasses should
+      # override this function
+      def show_char_callback(c)
       end
 
       #####################################################
@@ -67,7 +80,7 @@ class PDF::Reader
         else
           state[:ctm] = TransformationMatrix.new(a,b,c,d,e,f)
         end
-        @text_rendering_matrix = nil # invalidate cached value
+        invalidate_cached_values
       end
 
       #####################################################
@@ -77,7 +90,6 @@ class PDF::Reader
       def begin_text_object
         @text_matrix      = identity_matrix
         @text_line_matrix = identity_matrix
-        @font_size = nil
       end
 
       def end_text_object
@@ -102,7 +114,11 @@ class PDF::Reader
       end
 
       def font_size
-        @font_size ||= state[:text_font_size] * @text_matrix.a * ctm.a
+        state[:text_font_size]
+      end
+
+      def glyph_width_scaling_factor
+        @glyph_width_scaling_factor |= magnitude(text_rendering_matrix.a, text_rendering_matrix.b)
       end
 
       def set_text_leading(leading)
@@ -126,16 +142,9 @@ class PDF::Reader
       #####################################################
 
       def move_text_position(x, y) # Td
-        temp = TransformationMatrix.new(1, 0,
-                                        0, 1,
-                                        x, y)
-        @text_line_matrix = temp.multiply!(
-          @text_line_matrix.a, @text_line_matrix.b,
-          @text_line_matrix.c, @text_line_matrix.d,
-          @text_line_matrix.e, @text_line_matrix.f
-        )
+        @text_line_matrix.displacement_left_multiply!(x,y)
         @text_matrix = @text_line_matrix.dup
-        @font_size = @text_rendering_matrix = nil # invalidate cached value
+        invalidate_cached_values
       end
 
       def move_text_position_and_set_leading(x, y) # TD
@@ -150,7 +159,7 @@ class PDF::Reader
           e, f
         )
         @text_line_matrix = @text_matrix.dup
-        @font_size = @text_rendering_matrix = nil # invalidate cached value
+        invalidate_cached_values
       end
 
       def move_to_start_of_next_line # T*
@@ -161,12 +170,49 @@ class PDF::Reader
       # Text Showing Operators
       #####################################################
 
-      def show_text_with_positioning(params) # TJ
-        # TODO record position changes in state here
+      def show_text(string) # Tj (AWAY)
+        if current_font.nil?
+          raise PDF::Reader::MalformedPDFError, "current font is invalid"
+        end
+        glyphs = current_font.unpack(string)
+        glyphs.each_with_index do |glyph_code, index|
+          # paint the current glyph
+          newx, newy = @state.trm_transform(0,0)
+          utf8_char = @state.current_font.to_utf8(glyph_code)
+
+          #glyph width has units of pt after dividing by 1000
+          glyph_width = @state.current_font.glyph_width(glyph_code) / 1000.0
+
+          scaled_glyph_width = glyph_width * @state.glyph_width_scaling_factor
+
+          unless utf8_char == SPACE
+            @characters << TextRun.new(newx, newy, scaled_glyph_width, @state.font_size, utf8_char)
+          end
+
+          show_char_callback.call(utf8_char)
+
+          # apply to glyph displacment for the current glyph so the next
+          # glyph will appear in the correct position
+          process_glyph_displacement(glyph_width, 0, utf8_chars == SPACE)
+      end
+
+      def show_text_with_positioning(params) # TJ [(A) 120 (WA) 20 (Y)]
+        params.each do |e|
+          if e.class = String
+            show_text(string)
+          else
+            # e is a number representing additional displacement for the next string
+            if state[:text_mode] == 0
+              @text_matrix.displacement_left_multiply!(-1*e*state[:font_size]*state[:horizontal_scaling],0)
+            else
+              @text_matrix.displacement_left_multiply(0,-1*e*[:font_size]*state[:vertical_scaling])
+          end
+        end
       end
 
       def move_to_next_line_and_show_text(str) # '
         move_to_start_of_next_line
+        show_text(str)
       end
 
       def set_spacing_next_line_show_text(aw, ac, string) # "
@@ -301,8 +347,8 @@ class PDF::Reader
       #                 reached. Depending on the current state extra space
       #                 may need to be added
       #
-      def process_glyph_displacement(w0, tj, word_boundary)
-        fs = font_size # font size
+      def process_glyph_displacement(w0, w1, word_boundary)
+        fs = state[:font_size] # font size
         tc = state[:char_spacing]
         if word_boundary
           tw = state[:word_spacing]
@@ -320,19 +366,18 @@ class PDF::Reader
         end
         ty = 0
 
-        # TODO: I'm pretty sure that tx shouldn't need to be divided by
-        #       ctm[0] here, but this gets my tests green and I'm out of
-        #       ideas for now
         # TODO: support ty > 0
-        if ctm.a == 1
-          @text_matrix.horizontal_displacement_multiply!(tx)
-        else
-          @text_matrix.horizontal_displacement_multiply!(tx/ctm.a)
-        end
-        @font_size = @text_rendering_matrix = nil # invalidate cached value
+
+        @text_matrix.displacement_left_multiply!(tx,ty)
+        invalidate_cached_values
       end
 
       private
+
+      def invalidate_cached_values
+        @text_rendering_matrix = nil # invalidate cached values
+        @glyph_width_scaling_factor = nil
+      end
 
       # used for many and varied text positioning calculations. We potentially
       # need to access the results of this method many times when working with
@@ -341,8 +386,8 @@ class PDF::Reader
       def text_rendering_matrix
         @text_rendering_matrix ||= begin
           state_matrix = TransformationMatrix.new(
-            font_size * state[:h_scaling], 0,
-            0, font_size,
+            state[:font_size] * state[:h_scaling], 0,
+            0, state[:font_size],
             0, state[:text_rise]
           )
           state_matrix.multiply!(
@@ -378,21 +423,14 @@ class PDF::Reader
         ::Hash[wrapped_fonts]
       end
 
-      #####################################################
-      # Low-level Matrix Operations
-      #####################################################
-
-      # This class uses 3x3 matrices to represent geometric transformations
-      # These matrices are represented by arrays with 9 elements
-      # The array [a,b,c,d,e,f,g,h,i] would represent a matrix like:
-      #   a b c
-      #   d e f
-      #   g h i
-
       def identity_matrix
         TransformationMatrix.new(1, 0,
                                  0, 1,
                                  0, 0)
+      end
+
+      def magnitude(x,y)
+        return (x**2 + y**2)**0.5
       end
 
     end
