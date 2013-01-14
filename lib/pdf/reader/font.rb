@@ -74,6 +74,12 @@ class PDF::Reader
       end
     end
 
+    #TODO: I don't think this works in all cases. See page 245
+    def is_space?(glyph_code)
+      #maybe this: return glyph_code == 32
+      return to_utf8(glyph_code) == " "
+    end
+
     def unpack(data)
       data.unpack(encoding.unpack)
     end

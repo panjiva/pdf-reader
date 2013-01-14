@@ -88,13 +88,14 @@ class PDF::Reader
         @default_position_y = default[0]
         array.each do |params|
           if params.length == 2
+            # this is of the form "cid [w1, vx1, vy1, w2, vx2, vy2, ....]"
             start_id = params[0]
             params[1].each_slice(3).with_index do |a,i|
-              # each slice takes the form (w1, v_x, v_y)
               @heights[start+i] = a[0]
               @positions[start+i] = [a[1],a[2]]
             end
           elsif params.length == 3
+            #this is of the form "cid_start, cid_end, w, vx, vy]"
             (params[0]..params[1]).each do |id|
               @heights[id] = params[2]
               @positions[id] = [params[3],params[4]]

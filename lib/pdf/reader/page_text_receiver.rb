@@ -13,15 +13,13 @@ module PDF
 
       # starting a new page
       def page=(page)
-        @state = PageState.new(page)
-        @state.show_text_callback do |string, kerning|
-          internal_show_text(string, kerning)
-        end
+        @state = super(page)
         @characters = []
         @mediabox = page.attributes[:MediaBox]
       end
 
       def content
+        puts @characters
         PageLayout.new(@characters, @mediabox).to_s
       end
 
@@ -37,16 +35,17 @@ module PDF
         end
       end
 
-      private
-
-      def show_glyph_callback()
-          unless chars == SPACE
-            scaled_glyph_width = magnitude(text_rendering_matrix.a, text_rendering_matrix.b)
-            @characters << TextRun.new(@current_x, @current_y, scaled_glyph_width, font_size, @current_glyph)
-          end
+      def process_glyph(glyph_code)
+        unless current_font.is_space?(glyph_code)
+          x = text_rendering_matrix.e
+          y = text_rendering_matrix.f
+          text = current_font.to_utf8(glyph_code)
+          #TODO: figure out what should be done for sideways letters
+          width = current_font.glyph_width(glyph_code)/1000.0 * text_rendering_matrix.a
+          @characters << TextRun.new(x,y,width,state[:text_font_size],text)
         end
       end
-
     end
+
   end
 end

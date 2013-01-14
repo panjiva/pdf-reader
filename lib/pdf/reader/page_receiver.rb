@@ -17,7 +17,8 @@ class PDF::Reader
         :text_font_size => nil,
         :text_mode      => 0,
         :text_rise      => 0,
-        :text_knockout  => 0
+        :text_knockout  => 0,
+        :tj             => 0
       }
 
       SPACE = " "
@@ -44,7 +45,7 @@ class PDF::Reader
       # This function gets called for each
       # character that gets drawn on the page. There are no
       #
-      def show_glyph_callback()
+      def process_glyph(glyph_code)
       end
 
       #####################################################
@@ -178,29 +179,23 @@ class PDF::Reader
         end
         glyphs = current_font.unpack(string)
         glyphs.each_with_index do |glyph_code|
-          #glyph width has units of pt after dividing by 1000
-          glyph_width = current_font.glyph_width(glyph_code) / 1000.0
-
           # Subclasses should implement this function
-          show_glyph_callback.call(glyph_code)
+          # default implementation does nothing
+          process_glyph(glyph_code)
 
           # apply to glyph displacment for the current glyph so the next
           # glyph will appear in the correct position
-          process_glyph_displacement(glyph_width, 0, utf8_chars == SPACE)
+          process_glyph_displacement(glyph_code)
+        end
       end
 
       def show_text_with_positioning(params) # TJ [(A) 120 (WA) 20 (Y)]
         params.each do |e|
-          if e.class = String
-            show_text(string)
+          case e
+          when Float, Fixnum
+            state[:tj] = e
           else
-            # e is a number representing additional displacement for the next string
-            if state[:text_mode] == 0
-              @text_matrix.displacement_left_multiply!(-1*e*state[:font_size]*state[:horizontal_scaling],0)
-            else
-              @text_matrix.displacement_left_multiply(0,-1*e*[:font_size]*state[:vertical_scaling])
-            end
-            invalidate_cached_values
+            show_text(e)
           end
         end
       end
@@ -332,26 +327,22 @@ class PDF::Reader
       #
       # Arguments:
       #
-      # w  - the glyph width or height in pt. This generally means the width
-      #      in glyph space should be divded by 1000 before being passed to
-      #      this function. if text_mode = 1 (vertical writing mode), then
-      #      w represents the character height. Otherwise, it is the character
-      #      width.
-      # word_boundary - a boolean indicating if a word boundary was just
-      #                 reached. Depending on the current state extra space
-      #                 may need to be added
+      # glyph_code - self explanatory
       #
-      def process_glyph_displacement(w0, word_boundary)
-        fs = state[:font_size] # font size
+      def process_glyph_displacement(glyph_code)
+        fs = state[:text_font_size] # font size
         tc = state[:char_spacing]
-        tw = word_boundary ? state[:word_spacing] : 0
+        tw = current_font.is_space?(glyph_code) ? state[:word_spacing] : 0
+        tj = state[:tj]
         if state[:text_mode] == 0
+          w0 = current_font.glyph_width(glyph_code)
           th = state[:h_scaling]
-          tx = (w*fs + tc + tw) * th
+          tx = ((w0-tj)*fs/1000.0 + tc + tw) * th
           ty = 0
         else
+          w1 = current_font.glyph_height(glyph_code)
+          ty = (w1-tj)*fs/1000.0 + tc + tw
           tx = 0
-          ty = w*fs + tc + tw
         end
 
         @text_matrix.displacement_left_multiply!(tx,ty)
@@ -373,8 +364,8 @@ class PDF::Reader
       def text_rendering_matrix
         @text_rendering_matrix ||= begin
           state_matrix = TransformationMatrix.new(
-            state[:font_size] * state[:h_scaling], 0,
-            0, state[:font_size],
+            state[:text_font_size] * state[:h_scaling], 0,
+            0, state[:text_font_size],
             0, state[:text_rise]
           )
           state_matrix.multiply!(
@@ -414,10 +405,6 @@ class PDF::Reader
         TransformationMatrix.new(1, 0,
                                  0, 1,
                                  0, 0)
-      end
-
-      def magnitude(x,y)
-        return (x**2 + y**2)**0.5
       end
 
     end
