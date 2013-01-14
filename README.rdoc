@@ -1,3 +1,23 @@
+= Experimental Feature Branch
+
+This experimental fork of the pdf-reader project was created to fix some bugs
+in the core parser and to simplify part of the codebase.
+
+Implemented features include:
+-Created PDF::Reader::PageReceiver to ease the process of making custom receiver subclasses
+-Fixed bugs relating to the positioning of text
+-Support for vertical-mode text rendering
+
+Remaining goals include:
+-Import fonts that support vertical-mode rendering
+-Implement the ability to calculate the precise bounding rectangle for any character on the page
+
+
+
+Although the documented external API remains the same, anything dependent on the
+internal API of PageState and PageTextReceiver will probably break.
+
+
 = Release Notes
 
 The PDF::Reader library implements a PDF parser conforming as much as possible
