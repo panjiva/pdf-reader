@@ -13,7 +13,7 @@ module PDF
 
       # starting a new page
       def page=(page)
-        @state = super(page)
+        super(page)
         @characters = []
         @mediabox = page.attributes[:MediaBox]
       end
@@ -27,7 +27,7 @@ module PDF
       # XObjects
       #####################################################
       def invoke_xobject(label)
-        @state.invoke_xobject(label) do |xobj|
+        super(label) do |xobj|
           case xobj
           when PDF::Reader::FormXObject then
             xobj.walk(self)
