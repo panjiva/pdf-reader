@@ -334,6 +334,7 @@ class PDF::Reader
         tc = state[:char_spacing]
         tw = current_font.is_space?(glyph_code) ? state[:word_spacing] : 0
         tj = state[:tj]
+        state[:tj] = 0
         if state[:text_mode] == 0
           w0 = current_font.glyph_width(glyph_code)
           th = state[:h_scaling]
