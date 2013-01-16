@@ -82,6 +82,16 @@ class PDF::Reader
       self
     end
 
+    # Same as "multiply!", but left-multiplying
+    # instead of right-multiplying
+    #
+    # Currently no optimizations because I don't
+    # have a benchmarking suite set up
+    #
+    def left_multiply!(a,b,c,d,e,f)
+      faster_left_multiply!(a,b,c,d,e,f)
+    end
+
     # Optimised method for when the second matrix in the calculation is
     # a simple horizontal displacement.
     #
@@ -210,6 +220,19 @@ class PDF::Reader
       newd = (@c * b2) + (@d * d2)
       newe = (@e * a2) + (@f * c2) + e2
       newf = (@e * b2) + (@f * d2) + f2
+      @a, @b, @c, @d, @e, @f = newa, newb, newc, newd, newe, newf
+    end
+
+    # Same as "faster_multiply!", but left-multiplying
+    # instead of right-multiplying
+    #
+    def faster_left_multiply!(a2,b2,c2, d2,e2,f2)
+      newa = (a2 * @a) + (b2 * @c)
+      newb = (a2 * @b) + (b2 * @d)
+      newc = (c2 * @a) + (d2 * @c)
+      newd = (c2 * @b) + (d2 * @d)
+      newe = (e2 * @a) + (f2 * @c) + @e
+      newf = (e2 * @b) + (f2 * @d) + @f
       @a, @b, @c, @d, @e, @f = newa, newb, newc, newd, newe, newf
     end
   end
