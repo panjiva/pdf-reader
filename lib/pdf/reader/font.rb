@@ -95,6 +95,15 @@ class PDF::Reader
       @cached_widths[code_point] ||= @width_calc.glyph_width(code_point)
     end
 
+    def glyph_height(code_point)
+      if code_point.is_a?(String)
+        code_point = code_point.unpack(encoding.unpack).first
+      end
+
+      @cached_heights ||= {}
+      @cached_heights[code_point] ||= @width_calc.glyph_height(code_point)
+    end
+
     private
 
     def build_width_calculator

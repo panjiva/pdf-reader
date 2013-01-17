@@ -19,6 +19,12 @@ class PDF::Reader
 
         @descendant_font.glyph_width(code_point).to_f
       end
+
+      def glyph_height(code_point)
+        return 0 if code_point.nil? || code_point < 0
+
+        @descendant_font.glyph_height(code_point).to_f
+      end
     end
   end
 end
