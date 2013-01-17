@@ -79,6 +79,7 @@ class PDF::Reader
       #
       def concatenate_matrix(a, b, c, d, e, f)
         if state[:ctm]
+          $stderr.puts @text_matrix.inspect
           state[:ctm].left_multiply!(a,b,c,d,e,f)
         else
           state[:ctm] = TransformationMatrix.new(a,b,c,d,e,f)

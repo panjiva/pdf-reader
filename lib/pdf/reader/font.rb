@@ -34,7 +34,7 @@ class PDF::Reader
   class Font
     attr_accessor :subtype, :encoding, :descendantfonts, :tounicode
     attr_reader :widths, :first_char, :last_char, :basefont, :font_descriptor,
-                :cid_widths, :cid_default_width
+                :cid_widths, :cid_default_width, :cid_heights, :cid_default_height
 
     def initialize(ohash = nil, obj = nil)
       if ohash.nil? || obj.nil?

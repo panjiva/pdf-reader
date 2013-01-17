@@ -13,7 +13,7 @@ class PDF::Reader
       def initialize(font)
         @font = font
         parse_cid_widths(@font.cid_default_width, @font.cid_widths)
-        parse_cid_heights_and_positions(@cont.cid_default_height, @font.cid_heights)
+        parse_cid_heights_and_positions(@font.cid_default_height, @font.cid_heights)
       end
 
       def glyph_width(code_point)
@@ -55,10 +55,10 @@ class PDF::Reader
           params << array.shift
 
           if params.size == 2 && params.last.is_a?(Array)
-            widths.merge! parse_first_form(params.first, params.last)
+            @widths.merge! parse_width_first_form(params.first, params.last)
             params = []
           elsif params.size == 3
-            widths.merge! parse_second_form(params[0], params[1], params[2])
+            @widths.merge! parse_width_second_form(params[0], params[1], params[2])
             params = []
           end
         end

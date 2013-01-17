@@ -2,7 +2,7 @@
 
 require File.dirname(__FILE__) + "/spec_helper"
 
-describe PDF::Reader::PageState do
+describe PDF::Reader::PageReceiver do
   let!(:page)   { mock(:cache => {},
                         :objects => {},
                         :fonts => {},
