@@ -194,7 +194,7 @@ class PDF::Reader
         params.each do |e|
           case e
           when Float, Fixnum
-            state[:tj] = e
+            state[:tj] += e
           else
             show_text(e)
           end
