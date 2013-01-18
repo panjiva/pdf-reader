@@ -42,7 +42,8 @@ class PDF::Reader
           name = @font.encoding.int_to_name(code_point)
           m = @metrics.metrics_for_name(name)
         end
-        m[:wx]
+        # assume that if the code point could not be found, then glyph width = 0
+        m ? m[:wx] : 0
       end
 
     end

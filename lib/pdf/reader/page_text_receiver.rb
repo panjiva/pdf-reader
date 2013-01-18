@@ -40,9 +40,9 @@ module PDF
           x = text_rendering_matrix.e
           y = text_rendering_matrix.f
           text = current_font.to_utf8(glyph_code)
-          #TODO: figure out what should be done for sideways letters
+          #TODO: this only works for horizontal characters are upright (not sideways)
           width = current_font.glyph_width(glyph_code)/1000.0 * text_rendering_matrix.a
-          @characters << TextRun.new(x,y,width,state[:text_font_size],text)
+          @characters << TextRun.new(x,y,width,state[:text_font_size] * text_rendering_matrix.d,text)
         end
       end
     end
