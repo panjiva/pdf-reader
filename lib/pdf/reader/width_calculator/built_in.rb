@@ -46,6 +46,13 @@ class PDF::Reader
         m ? m[:wx] : 0
       end
 
+      #TODO: no idea why my pdf is using a built-in font in 
+      #vertical writing mode. Couldn't find anything in the
+      #spec that described the desired behavior in this case.
+      def glyph_height(code_point)
+        return 0
+      end
+
     end
   end
 end

@@ -27,6 +27,13 @@ class PDF::Reader
           @missing_width.to_f
         end
       end
+
+      #TODO: figure out the proper response when the pdf
+      #tries to write in vertical mode with this font
+      #(which doesn't support vertical mode)
+      def glyph_height(code_point)
+        return 0
+      end
     end
   end
 end
