@@ -4,13 +4,13 @@ This experimental fork of the pdf-reader project was created to fix some bugs
 in the core parser and to simplify part of the codebase.
 
 Implemented features include:
--Created PDF::Reader::PageReceiver to ease the process of making custom receiver subclasses
--Fixed bugs relating to the positioning of text
--Support for vertical-mode text rendering
+    -Created PDF::Reader::PageReceiver to ease the process of making custom receiver subclasses
+    -Fixed bugs relating to the positioning of text
+    -Support for vertical-mode text rendering
 
 Remaining goals include:
--Import fonts that support vertical-mode rendering
--Implement the ability to calculate the precise bounding rectangle for any character on the page
+    -Import fonts that support vertical-mode rendering
+    -Implement the ability to calculate the precise bounding rectangle for any character on the page
 
 
 
