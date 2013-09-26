@@ -1,7 +1,7 @@
 # RSpec files aren't included, as they depend on the PDF files,
 # which will make the gem filesize irritatingly large
 Gem::Specification.new do |spec|
-  spec.name = "pdf-reader"
+  spec.name = "panjiva-pdf-reader"
   spec.version = "1.3.0"
   spec.summary = "A library for accessing the content of PDF files"
   spec.description = "The PDF::Reader library implements a PDF parser conforming as much as possible to the PDF specification from Adobe"
